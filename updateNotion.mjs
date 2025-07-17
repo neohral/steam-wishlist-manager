@@ -101,6 +101,7 @@ async function updateNotionPage(pageId, { price, originalPrice, salePercent }) {
       const info = await fetchSteamInfo(appId);
       // 既存のSalePercentを取得
       const oldSalePercent = page.properties['SalePercent']?.number ?? null;
+      const oldPrice = page.properties['Price']?.number ?? null;
       await updateNotionPage(page.id, info);
       if ((oldSalePercent === 0 || oldSalePercent === null) && info.salePercent && info.salePercent !== 0) {
         // 「非通知」タグがあれば通知しない
@@ -110,6 +111,15 @@ async function updateNotionPage(pageId, { price, originalPrice, salePercent }) {
           await sendDiscordNotification(saleMsg);
         } else {
           console.log(`非通知タグのため通知スキップ: ${info.title}`);
+        }
+      } else if ((oldPrice === null) && (info.price !== null)) {
+        // 価格がnull→値ありになった場合のリリース通知
+        if (!tags.includes('非通知')) {
+          const releaseMsg = `リリース検知\nタイトル: ${info.title}\nURL: ${info.url}\n割引率: ${info.salePercent}%\n価格: ${info.price}円`;
+          console.log(releaseMsg);
+          await sendDiscordNotification(releaseMsg);
+        } else {
+          console.log(`非通知タグのためリリース通知スキップ: ${info.title}`);
         }
       } else {
         console.log(`Updated: ${info.title}`);
