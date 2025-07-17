@@ -8,37 +8,6 @@ const DISCORD_TOKEN = process.env.DISCORD_TOKEN;
 const NOTION_TOKEN = process.env.NOTION_TOKEN;
 const NOTION_DATABASE_ID = process.env.NOTION_DATABASE_ID;
 
-// Steam情報取得関連の定数
-const STEAM_CONSTANTS = {
-  BASE_URL: 'store.steampowered.com',
-  JAPANESE_LOCALE: 'japanese',
-  SELECTORS: {
-    TITLE: '.apphub_AppName',
-    PRICE: {
-      CONTAINER: '.game_area_purchase_game_wrapper',
-      REGULAR: '.game_purchase_price',
-      DISCOUNT: '.discount_final_price'
-    },
-    REVIEWS: {
-      CONTAINER: '.user_reviews_summary_row',
-      SUBTITLE: '.subtitle',
-      SUMMARY: '.game_review_summary',
-      DESCRIPTION: '.responsive_reviewdesc'
-    }
-  },
-  LABELS: {
-    RECENT_JP: '最近のレビュー：',
-    RECENT_EN: 'Recent Reviews:',
-    OVERALL_JP: 'すべてのレビュー：',
-    OVERALL_EN: 'All Reviews:'
-  },
-  DEFAULT_MESSAGES: {
-    NO_RECENT_REVIEW: '',
-    NO_OVERALL_REVIEW: 'すべてのレビュー：評価なし'
-  }
-};
-
-
 // Discordクライアント
 const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent] });
 
