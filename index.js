@@ -8,6 +8,7 @@ import express from 'express';
 const DISCORD_TOKEN = process.env.DISCORD_TOKEN;
 const NOTION_TOKEN = process.env.NOTION_TOKEN;
 const NOTION_DATABASE_ID = process.env.NOTION_DATABASE_ID;
+const PORT = process.env.PORT;
 
 // Discordクライアント
 const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent] });
@@ -98,7 +99,6 @@ client.login(DISCORD_TOKEN);
 
 // Express APIサーバー設定
 const app = express();
-const PORT = 3005;
 
 // Steam情報取得API
 app.get('/api/steaminfo/:appId', async (req, res) => {
