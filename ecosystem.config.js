@@ -2,7 +2,7 @@ export default {
   apps: [
     {
       name: "steam-wishlist-bot",
-      script: "index.js",
+      script: "./index.js",
       watch: false
     }
   ]
