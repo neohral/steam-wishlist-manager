@@ -16,10 +16,10 @@ jobs:
           node-version: '20'
       - name: Install dependencies
         run: npm ci
-      - name: Run updateNotion.js
+      - name: Run updateNotion.mjs
         env:
           NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
           NOTION_DATABASE_ID: ${{ secrets.NOTION_DATABASE_ID }}
           DISCORD_TOKEN: ${{ secrets.DISCORD_TOKEN }}
           DISCORD_CHANNEL_ID: ${{ secrets.DISCORD_CHANNEL_ID }}
-        run: node updateNotion.js 
+        run: node updateNotion.mjs 
