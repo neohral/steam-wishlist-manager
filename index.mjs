@@ -98,19 +98,19 @@ client.on('messageCreate', async (message) => {
 client.login(DISCORD_TOKEN);
 
 // Express APIサーバー設定
-const app = express();
+// const app = express();
 
-// Steam情報取得API
-app.get('/api/steaminfo/:appId', async (req, res) => {
-  const appId = req.params.appId;
-  try {
-    const info = await fetchSteamInfo(appId);
-    res.json(info);
-  } catch (e) {
-    res.status(500).json({ error: '取得に失敗しました' });
-  }
-});
+// // Steam情報取得API
+// app.get('/api/steaminfo/:appId', async (req, res) => {
+//   const appId = req.params.appId;
+//   try {
+//     const info = await fetchSteamInfo(appId);
+//     res.json(info);
+//   } catch (e) {
+//     res.status(500).json({ error: '取得に失敗しました' });
+//   }
+// });
 
-app.listen(PORT, () => {
-  console.log(`APIサーバーが http://localhost:${PORT} で起動しました`);
-});
+// app.listen(PORT, () => {
+//   console.log(`APIサーバーが http://localhost:${PORT} で起動しました`);
+// });
