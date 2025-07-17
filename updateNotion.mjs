@@ -2,6 +2,7 @@ import 'dotenv/config';
 import { Client as NotionClient } from '@notionhq/client';
 import axios from 'axios';
 import { Client, GatewayIntentBits } from 'discord.js';
+import * as cheerio from 'cheerio';
 
 // 各種トークン・ID
 const NOTION_TOKEN = process.env.NOTION_TOKEN;
@@ -20,6 +21,23 @@ discordClient.once('ready', () => {
   console.log('Discord bot ready');
 });
 discordClient.login(DISCORD_TOKEN);
+
+// Steam情報取得関連の定数
+const STEAM_CONSTANTS = {
+  SELECTORS: {
+    REVIEWS: {
+      CONTAINER: '.user_reviews_summary_row',
+      SUBTITLE: '.subtitle',
+      SUMMARY: '.game_review_summary',
+      DESCRIPTION: '.responsive_reviewdesc'
+    }
+  },
+  LABELS: {
+    RECENT_JP: '最近のレビュー：',
+    OVERALL_JP: 'すべてのレビュー：',
+  },
+};
+
 
 async function sendDiscordNotification(message) {
   if (!discordReady) return;
@@ -52,6 +70,51 @@ async function fetchSteamInfo(appId) {
   };
 }
 
+// レビュー評価を取得
+async function fetchReview(appId) {
+  const url = `https://store.steampowered.com/app/${appId}?l=japanese`;
+  // Steamページを取得
+  const response = await axios.get(url, {
+    headers: {
+      'Cookie': 'wants_mature_content=1'
+    }
+  });
+  const $ = cheerio.load(response.data);
+
+  // 各情報を抽出
+  const { recentReview, overallReview } = extractReviewInfo($);
+  return { recentReview, overallReview };
+}
+
+// レビュー情報を抽出
+const extractReviewInfo = ($) => {
+  let recentReview = '評価なし';
+  let overallReview = '評価なし';
+
+  $(STEAM_CONSTANTS.SELECTORS.REVIEWS.CONTAINER).each((i, elem) => {
+    const label = $(elem).find(STEAM_CONSTANTS.SELECTORS.REVIEWS.SUBTITLE).text().trim();
+    const summary = $(elem).find(STEAM_CONSTANTS.SELECTORS.REVIEWS.SUMMARY).text().trim();
+    const description = $(elem).find(STEAM_CONSTANTS.SELECTORS.REVIEWS.DESCRIPTION).text().trim();
+
+    // パーセンテージを抽出
+    const match = description.match(/(\d+)%\s.*$/);
+    const percent = match ? parseInt(match[1], 10) : 0;
+
+    // 最近のレビュー
+    if (label === STEAM_CONSTANTS.LABELS.RECENT_JP && summary != '') {
+      recentReview = `${summary} (${percent}%)`;
+    }
+
+    // 全体のレビュー
+    if (label === STEAM_CONSTANTS.LABELS.OVERALL_JP && summary != '') {
+      overallReview = `${summary} (${percent}%)`;
+      return false; // ループを終了
+    }
+  });
+
+  return { recentReview, overallReview };
+};
+
 // Notionデータベースから全ゲームを取得
 async function getAllGamesFromNotion() {
   const pages = [];
@@ -68,13 +131,14 @@ async function getAllGamesFromNotion() {
 }
 
 // Notionページを更新
-async function updateNotionPage(pageId, { price, originalPrice, salePercent }) {
+async function updateNotionPage(pageId, { price, originalPrice, salePercent }, overallReview) {
   await notion.pages.update({
     page_id: pageId,
     properties: {
       'Price': { number: price },
       'OriginalPrice': { number: originalPrice },
       'SalePercent': { number: salePercent/100 },
+      'OverallReview': { rich_text: [{ text: { content: overallReview } }] }
     },
   });
 }
@@ -99,10 +163,11 @@ async function updateNotionPage(pageId, { price, originalPrice, salePercent }) {
 
     try {
       const info = await fetchSteamInfo(appId);
+      const review = await fetchReview(appId);
       // 既存のSalePercentを取得
       const oldSalePercent = page.properties['SalePercent']?.number ?? null;
       const oldPrice = page.properties['Price']?.number ?? null;
-      await updateNotionPage(page.id, info);
+      await updateNotionPage(page.id, info, review.overallReview);
       if ((oldSalePercent === 0 || oldSalePercent === null) && info.salePercent && info.salePercent !== 0) {
         // 「非通知」タグがあれば通知しない
         if (!tags.includes('非通知')) {

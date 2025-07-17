@@ -3,12 +3,44 @@ import { Client, GatewayIntentBits } from 'discord.js';
 import { Client as NotionClient } from '@notionhq/client';
 import axios from 'axios';
 import express from 'express';
+import * as cheerio from 'cheerio';
 
 // 各種トークン・ID
 const DISCORD_TOKEN = process.env.DISCORD_TOKEN;
 const NOTION_TOKEN = process.env.NOTION_TOKEN;
 const NOTION_DATABASE_ID = process.env.NOTION_DATABASE_ID;
 const PORT = process.env.PORT;
+
+// Steam情報取得関連の定数
+const STEAM_CONSTANTS = {
+  BASE_URL: 'store.steampowered.com',
+  JAPANESE_LOCALE: 'japanese',
+  SELECTORS: {
+    TITLE: '.apphub_AppName',
+    PRICE: {
+      CONTAINER: '.game_area_purchase_game_wrapper',
+      REGULAR: '.game_purchase_price',
+      DISCOUNT: '.discount_final_price'
+    },
+    REVIEWS: {
+      CONTAINER: '.user_reviews_summary_row',
+      SUBTITLE: '.subtitle',
+      SUMMARY: '.game_review_summary',
+      DESCRIPTION: '.responsive_reviewdesc'
+    }
+  },
+  LABELS: {
+    RECENT_JP: '最近のレビュー：',
+    RECENT_EN: 'Recent Reviews:',
+    OVERALL_JP: 'すべてのレビュー：',
+    OVERALL_EN: 'All Reviews:'
+  },
+  DEFAULT_MESSAGES: {
+    NO_RECENT_REVIEW: '',
+    NO_OVERALL_REVIEW: 'すべてのレビュー：評価なし'
+  }
+};
+
 
 // Discordクライアント
 const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent] });
@@ -46,9 +78,53 @@ async function fetchSteamInfo(appId) {
     image: data.header_image
   };
 }
+// レビュー評価を取得
+async function fetchReview(appId) {
+  const url = `https://store.steampowered.com/app/${appId}?l=japanese&agecheck=1`;
+  // Steamページを取得
+  const response = await axios.get(url, {
+    headers: {
+      'Cookie': 'wants_mature_content=1'
+    }
+  });
+  const $ = cheerio.load(response.data);
+
+  // 各情報を抽出
+  const { recentReview, overallReview } = extractReviewInfo($);
+  return { recentReview, overallReview };
+}
+
+// レビュー情報を抽出
+const extractReviewInfo = ($) => {
+  let recentReview = { label: '', summary: '', percent: 0 };
+  let overallReview = { label: '', summary: '', percent: 0 };
+
+  $(STEAM_CONSTANTS.SELECTORS.REVIEWS.CONTAINER).each((i, elem) => {
+    const label = $(elem).find(STEAM_CONSTANTS.SELECTORS.REVIEWS.SUBTITLE).text().trim();
+    const summary = $(elem).find(STEAM_CONSTANTS.SELECTORS.REVIEWS.SUMMARY).text().trim();
+    const description = $(elem).find(STEAM_CONSTANTS.SELECTORS.REVIEWS.DESCRIPTION).text().trim();
+
+    // パーセンテージを抽出
+    const match = description.match(/(\d+)%\s.*$/);
+    const percent = match ? parseInt(match[1], 10) : 0;
+
+    // 最近のレビュー
+    if (label === STEAM_CONSTANTS.LABELS.RECENT_JP ) {
+      recentReview = `${summary} (${percent}%)`;
+    }
+
+    // 全体のレビュー
+    if (label === STEAM_CONSTANTS.LABELS.OVERALL_JP) {
+      overallReview = `${summary} (${percent}%)`;
+      return false; // ループを終了
+    }
+  });
+
+  return { recentReview, overallReview };
+};
 
 // Notionに追加
-async function addToNotion({ title, appId, url, price, originalPrice, salePercent, tag, imageUrl }) {
+async function addToNotion({ title, appId, url, price, originalPrice, salePercent, tag, imageUrl, overallReview }) {
   const properties = {
     'Name': { title: [{ text: { content: title } }] },
     'AppID': { rich_text: [{ text: { content: appId } }] },
@@ -56,6 +132,7 @@ async function addToNotion({ title, appId, url, price, originalPrice, salePercen
     'Price': { number: price },
     'OriginalPrice': { number: originalPrice },
     'SalePercent': { number: salePercent/100 },
+    'OverallReview': { rich_text: [{ text: { content: overallReview } }] }
   };
   if (tag && tag.trim() !== '') {
     properties['Tags'] = { multi_select: [{ name: tag }] };
@@ -88,7 +165,8 @@ client.on('messageCreate', async (message) => {
 
   try {
     const info = await fetchSteamInfo(appId);
-    await addToNotion({ ...info, tag, imageUrl: info.image });
+    const review = await fetchReview(appId);
+    await addToNotion({ ...info, tag, imageUrl: info.image, overallReview: review.overallReview });
   } catch (e) {
     console.error(e);
     message.reply('エラーが発生しました。');
