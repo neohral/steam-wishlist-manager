@@ -1,15 +1,12 @@
 import 'dotenv/config';
 import { Client, GatewayIntentBits } from 'discord.js';
 import { Client as NotionClient } from '@notionhq/client';
-import axios from 'axios';
-import express from 'express';
-import * as cheerio from 'cheerio';
+import { fetchSteamInfo, fetchReview } from './steamUtils.mjs';
 
 // 各種トークン・ID
 const DISCORD_TOKEN = process.env.DISCORD_TOKEN;
 const NOTION_TOKEN = process.env.NOTION_TOKEN;
 const NOTION_DATABASE_ID = process.env.NOTION_DATABASE_ID;
-const PORT = process.env.PORT;
 
 // Steam情報取得関連の定数
 const STEAM_CONSTANTS = {
@@ -53,75 +50,6 @@ function extractAppId(url) {
   const match = url.match(/store\.steampowered\.com\/app\/(\d+)/);
   return match ? match[1] : null;
 }
-
-// Steam APIから情報取得
-async function fetchSteamInfo(appId) {
-  const url = `https://store.steampowered.com/api/appdetails?appids=${appId}&cc=jp&l=japanese`;
-  const res = await axios.get(url);
-  const data = res.data[appId].data;
-  // 価格・セール情報を数値に変換
-  let price = null;
-  let originalPrice = null;
-  let salePercent = null;
-  if (data.price_overview) {
-    price = parseInt(data.price_overview.final, 10) / 100;
-    originalPrice = parseInt(data.price_overview.initial, 10) / 100;
-    salePercent = data.price_overview.discount_percent;
-  }
-  return {
-    title: data.name,
-    price: price, // 割引後価格
-    originalPrice: originalPrice, // 元値
-    salePercent: salePercent, // 割引率
-    url: `https://store.steampowered.com/app/${appId}/`,
-    appId: appId,
-    image: data.header_image
-  };
-}
-// レビュー評価を取得
-async function fetchReview(appId) {
-  const url = `https://store.steampowered.com/app/${appId}?l=japanese&agecheck=1`;
-  // Steamページを取得
-  const response = await axios.get(url, {
-    headers: {
-      'Cookie': 'wants_mature_content=1'
-    }
-  });
-  const $ = cheerio.load(response.data);
-
-  // 各情報を抽出
-  const { recentReview, overallReview } = extractReviewInfo($);
-  return { recentReview, overallReview };
-}
-
-// レビュー情報を抽出
-const extractReviewInfo = ($) => {
-  let recentReview = { label: '', summary: '', percent: 0 };
-  let overallReview = { label: '', summary: '', percent: 0 };
-
-  $(STEAM_CONSTANTS.SELECTORS.REVIEWS.CONTAINER).each((i, elem) => {
-    const label = $(elem).find(STEAM_CONSTANTS.SELECTORS.REVIEWS.SUBTITLE).text().trim();
-    const summary = $(elem).find(STEAM_CONSTANTS.SELECTORS.REVIEWS.SUMMARY).text().trim();
-    const description = $(elem).find(STEAM_CONSTANTS.SELECTORS.REVIEWS.DESCRIPTION).text().trim();
-
-    // パーセンテージを抽出
-    const match = description.match(/(\d+)%\s.*$/);
-    const percent = match ? parseInt(match[1], 10) : 0;
-
-    // 最近のレビュー
-    if (label === STEAM_CONSTANTS.LABELS.RECENT_JP ) {
-      recentReview = `${summary} (${percent}%)`;
-    }
-
-    // 全体のレビュー
-    if (label === STEAM_CONSTANTS.LABELS.OVERALL_JP) {
-      overallReview = `${summary} (${percent}%)`;
-      return false; // ループを終了
-    }
-  });
-
-  return { recentReview, overallReview };
-};
 
 // Notionに追加
 async function addToNotion({ title, appId, url, price, originalPrice, salePercent, tag, imageUrl, overallReview }) {
@@ -174,21 +102,3 @@ client.on('messageCreate', async (message) => {
 });
 
 client.login(DISCORD_TOKEN);
-
-// Express APIサーバー設定
-// const app = express();
-
-// // Steam情報取得API
-// app.get('/api/steaminfo/:appId', async (req, res) => {
-//   const appId = req.params.appId;
-//   try {
-//     const info = await fetchSteamInfo(appId);
-//     res.json(info);
-//   } catch (e) {
-//     res.status(500).json({ error: '取得に失敗しました' });
-//   }
-// });
-
-// app.listen(PORT, () => {
-//   console.log(`APIサーバーが http://localhost:${PORT} で起動しました`);
-// });
