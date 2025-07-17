@@ -1,7 +1,7 @@
 module.exports = {
     apps: [
       {
-        name: "p-app",
+        name: "steam-wishlist-bot",
         script: "index.js",
         watch: false
       }
