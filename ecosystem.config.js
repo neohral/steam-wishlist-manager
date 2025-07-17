@@ -1,4 +1,4 @@
-module.exports = {
+export default {
   apps: [
     {
       name: "steam-wishlist-bot",
@@ -6,4 +6,4 @@ module.exports = {
       watch: false
     }
   ]
-} 
+}
