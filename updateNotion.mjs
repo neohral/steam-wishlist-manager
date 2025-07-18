@@ -8,6 +8,7 @@ const NOTION_TOKEN = process.env.NOTION_TOKEN;
 const NOTION_DATABASE_ID = process.env.NOTION_DATABASE_ID;
 const DISCORD_TOKEN = process.env.DISCORD_TOKEN;
 const DISCORD_CHANNEL_ID = process.env.DISCORD_CHANNEL_ID;
+const DO_NOT_NOTIFY_TAG = '非通知'
 
 // Notionクライアント
 const notion = new NotionClient({ auth: NOTION_TOKEN });
@@ -85,7 +86,7 @@ async function updateNotionPage(pageId, { price, originalPrice, salePercent }, o
       await updateNotionPage(page.id, info, review.overallReview);
       if ((oldSalePercent === 0 || oldSalePercent === null) && info.salePercent && info.salePercent !== 0) {
         // 「非通知」タグがあれば通知しない
-        if (!tags.includes('非通知')) {
+        if (!tags.includes(DO_NOT_NOTIFY_TAG)) {
           const saleMsg = `SALE開始検知\nタイトル: ${info.title}\nURL: ${info.url}\n割引率: ${info.salePercent}%\n価格: ${info.price}円`;
           console.log(saleMsg);
           await sendDiscordNotification(saleMsg);
@@ -94,12 +95,12 @@ async function updateNotionPage(pageId, { price, originalPrice, salePercent }, o
         }
       } else if ((oldPrice === null) && (info.price !== null)) {
         // 価格がnull→値ありになった場合のリリース通知
-        if (!tags.includes('非通知')) {
+        if (!tags.includes(DO_NOT_NOTIFY_TAG)) {
           const releaseMsg = `リリース検知\nタイトル: ${info.title}\nURL: ${info.url}\n割引率: ${info.salePercent}%\n価格: ${info.price}円`;
           console.log(releaseMsg);
           await sendDiscordNotification(releaseMsg);
         } else {
-          console.log(`非通知タグのためリリース通知スキップ: ${info.title}`);
+          console.log(`${DO_NOT_NOTIFY_TAG}タグのためリリース通知スキップ: ${info.title}`);
         }
       } else {
         console.log(`Updated: ${info.title}`);
