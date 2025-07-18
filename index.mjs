@@ -21,7 +21,7 @@ function extractAppId(url) {
 }
 
 // Notionに追加
-async function addToNotion({ title, appId, url, price, originalPrice, salePercent, tag, imageUrl, overallReview }) {
+async function addToNotion({ title, appId, url, price, originalPrice, salePercent, tags, imageUrl, overallReview }) {
   const properties = {
     'Name': { title: [{ text: { content: title } }] },
     'AppID': { rich_text: [{ text: { content: appId } }] },
@@ -31,8 +31,8 @@ async function addToNotion({ title, appId, url, price, originalPrice, salePercen
     'SalePercent': { number: salePercent/100 },
     'OverallReview': { rich_text: [{ text: { content: overallReview } }] }
   };
-  if (tag && tag.trim() !== '') {
-    properties['Tags'] = { multi_select: [{ name: tag }] };
+  if (tags && tags.length > 0) {
+    properties['Tags'] = { multi_select: tags.map(tag => ({ name: tag.trim() })).filter(tag => tag.name !== '') };
   }
   const coverUrl = imageUrl;
   await notion.pages.create({
@@ -52,7 +52,7 @@ client.on('messageCreate', async (message) => {
   const args = message.content.split(' ');
 
   const steamUrl = args[0];
-  let tag = args.slice(1).join(' ');
+  let tags = args.slice(1); // 複数のタグを配列として取得
   const appId = extractAppId(steamUrl);
 
   if (!appId) {
@@ -63,7 +63,7 @@ client.on('messageCreate', async (message) => {
   try {
     const info = await fetchSteamInfo(appId);
     const review = await fetchReview(appId);
-    await addToNotion({ ...info, tag, imageUrl: info.image, overallReview: review.overallReview });
+    await addToNotion({ ...info, tags, imageUrl: info.image, overallReview: review.overallReview });
   } catch (e) {
     console.error(e);
     message.reply('エラーが発生しました。');
