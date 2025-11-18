@@ -2,7 +2,7 @@ name: Update Notion Wishlist
 
 on:
   schedule:
-    - cron: '0 1 * * *' # JST 10:00はUTC 1:00
+    - cron: '0 5 * * *' # JST 14:00はUTC 5:00
 
 jobs:
   update-wishlist:
