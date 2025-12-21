@@ -30,6 +30,8 @@ export async function fetchSteamInfo(appId) {
     originalPrice = parseInt(data.price_overview.initial, 10) / 100;
     salePercent = data.price_overview.discount_percent;
   }
+  const imageUrl = new URL(data.header_image);
+  const cleanImageUrl = imageUrl.origin + imageUrl.pathname;
   return {
     title: data.name,
     price: price,
@@ -37,7 +39,7 @@ export async function fetchSteamInfo(appId) {
     salePercent: salePercent,
     url: `https://store.steampowered.com/app/${appId}/`,
     appId: appId,
-    image: data.game_header_image_full
+    image: cleanImageUrl
   };
 }
 
