@@ -37,7 +37,7 @@ export async function fetchSteamInfo(appId) {
     salePercent: salePercent,
     url: `https://store.steampowered.com/app/${appId}/`,
     appId: appId,
-    image: data.header_image
+    image: data.game_header_image_full
   };
 }
 
