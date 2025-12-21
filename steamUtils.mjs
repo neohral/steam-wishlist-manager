@@ -14,6 +14,7 @@ export const STEAM_CONSTANTS = {
   LABELS: {
     RECENT_JP: '最近のレビュー：',
     OVERALL_JP: 'すべてのレビュー：',
+    OVERALL2_JP: '日本語のレビュー：',
   },
 };
 
@@ -75,7 +76,7 @@ export function extractReviewInfo($) {
       recentReview = `${summary} (${percent}%)`;
     }
     // 全体のレビュー
-    if (label === STEAM_CONSTANTS.LABELS.OVERALL_JP && summary != '') {
+    if ((label === STEAM_CONSTANTS.LABELS.OVERALL_JP || label === STEAM_CONSTANTS.LABELS.OVERALL2_JP) && summary != '') {
       overallReview = `${summary} (${percent}%)`;
       return false; // ループを終了
     }
