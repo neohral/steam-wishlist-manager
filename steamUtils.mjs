@@ -66,7 +66,7 @@ export function extractReviewInfo($) {
     const summary = $(elem).find(STEAM_CONSTANTS.SELECTORS.REVIEWS.SUMMARY).text().trim();
     const description = $(elem).find(STEAM_CONSTANTS.SELECTORS.REVIEWS.DESCRIPTION).text().trim();
     // パーセンテージを抽出
-    const match = description.match(/(\d+)%\s.*$/);
+    const match = description.match(/(\d+)%/);
     const percent = match ? parseInt(match[1], 10) : 0;
     // 最近のレビュー
     if (label === STEAM_CONSTANTS.LABELS.RECENT_JP && summary != '') {
