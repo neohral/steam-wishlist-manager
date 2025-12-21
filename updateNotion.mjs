@@ -47,7 +47,7 @@ async function getAllGamesFromNotion() {
 }
 
 // Notionページを更新
-async function updateNotionPage(pageId, { price, originalPrice, salePercent }, overallReview) {
+async function updateNotionPage(pageId, { price, originalPrice, salePercent,image }, overallReview) {
   await notion.pages.update({
     page_id: pageId,
     properties: {
@@ -55,6 +55,10 @@ async function updateNotionPage(pageId, { price, originalPrice, salePercent }, o
       'OriginalPrice': { number: originalPrice },
       'SalePercent': { number: salePercent/100 },
       'OverallReview': { rich_text: [{ text: { content: overallReview } }] }
+    },
+    cover: {
+      type: 'external',
+      external: { url: image }
     },
   });
 }
