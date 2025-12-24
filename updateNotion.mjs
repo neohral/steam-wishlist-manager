@@ -1,7 +1,7 @@
 import 'dotenv/config';
 import { Client as NotionClient } from '@notionhq/client';
 import { Client, GatewayIntentBits } from 'discord.js';
-import { fetchSteamInfo, fetchReview } from './steamUtils.mjs';
+import { fetchAppDetails, fetchPageContent, fetchOverallReview, extractRecentReview} from './services/steam-fetch.js';
 
 // 各種トークン・ID
 const NOTION_TOKEN = process.env.NOTION_TOKEN;
@@ -47,18 +47,18 @@ async function getAllGamesFromNotion() {
 }
 
 // Notionページを更新
-async function updateNotionPage(pageId, { price, originalPrice, salePercent,image }, overallReview) {
+async function updateNotionPage(pageId, { price, originalPrice, salePercent,imageUrl }, overallReview) {
   await notion.pages.update({
     page_id: pageId,
     properties: {
-      'Price': { number: price },
-      'OriginalPrice': { number: originalPrice },
+      'Price': { number: parseInt(price) },
+      'OriginalPrice': { number: parseInt(originalPrice) },
       'SalePercent': { number: salePercent/100 },
-      'OverallReview': { rich_text: [{ text: { content: overallReview } }] }
+      'OverallReview': { rich_text: [{ text: { content: formatReviewText(overallReview,"評価なし") } }] }
     },
     cover: {
       type: 'external',
-      external: { url: image }
+      external: { url: imageUrl }
     },
   });
 }
@@ -82,12 +82,16 @@ async function updateNotionPage(pageId, { price, originalPrice, salePercent,imag
       : [];
 
     try {
-      const info = await fetchSteamInfo(appId);
-      const review = await fetchReview(appId);
+      const [info, $, overallReview] = await Promise.all([
+        fetchAppDetails(appId),
+        fetchPageContent("https://store.steampowered.com/app/" + appId + "?l=japanese"),
+        fetchOverallReview(appId)
+      ]);
+      const recentReview = extractRecentReview($);
       // 既存のSalePercentを取得
       const oldSalePercent = page.properties['SalePercent']?.number ?? null;
       const oldPrice = page.properties['Price']?.number ?? null;
-      await updateNotionPage(page.id, info, review.overallReview);
+      await updateNotionPage(page.id, info, overallReview);
       if ((oldSalePercent === 0 || oldSalePercent === null) && info.salePercent && info.salePercent !== 0) {
         // 「非通知」タグがあれば通知しない
         if (!tags.includes(DO_NOT_NOTIFY_TAG)) {
@@ -116,3 +120,11 @@ async function updateNotionPage(pageId, { price, originalPrice, salePercent,imag
   // Discordクライアントを終了
   discordClient.destroy();
 })(); 
+
+
+const formatReviewText = (review, defaultMessage) => {
+  if (review && review.summary && review.percent >= 0) {
+    return `${review.summary}(${review.percent}%)`;
+  }
+  return defaultMessage;
+};

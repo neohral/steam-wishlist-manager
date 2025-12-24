@@ -1,7 +1,7 @@
 import 'dotenv/config';
 import { Client, GatewayIntentBits } from 'discord.js';
 import { Client as NotionClient } from '@notionhq/client';
-import { fetchSteamInfo, fetchReview } from './steamUtils.mjs';
+import { fetchAppDetails, fetchOverallReview} from './services/steam-fetch.js';
 
 // 各種トークン・ID
 const DISCORD_TOKEN = process.env.DISCORD_TOKEN;
@@ -61,13 +61,21 @@ client.on('messageCreate', async (message) => {
   }
 
   try {
-    const info = await fetchSteamInfo(appId);
-    const review = await fetchReview(appId);
-    await addToNotion({ ...info, tags, imageUrl: info.image, overallReview: review.overallReview });
+    const info = await fetchAppDetails(appId);
+    const review = await fetchOverallReview(appId);
+    const formaterdOverallReview = formatReviewText(review, "評価なし");
+    await addToNotion({ ...info, tags, imageUrl: info.imageUrl, overallReview: formaterdOverallReview });
   } catch (e) {
     console.error(e);
     message.reply('エラーが発生しました。');
   }
 });
+
+const formatReviewText = (review, defaultMessage) => {
+  if (review && review.summary && review.percent >= 0) {
+    return `${review.summary}(${review.percent}%)`;
+  }
+  return defaultMessage;
+};
 
 client.login(DISCORD_TOKEN);
