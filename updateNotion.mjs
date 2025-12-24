@@ -2,6 +2,7 @@ import 'dotenv/config';
 import { Client as NotionClient } from '@notionhq/client';
 import { Client, GatewayIntentBits } from 'discord.js';
 import { fetchAppDetails, fetchPageContent, fetchOverallReview, extractRecentReview} from './services/steam-fetch.js';
+import { formatReviewText } from './services/steam-formater.js';
 
 // 各種トークン・ID
 const NOTION_TOKEN = process.env.NOTION_TOKEN;
@@ -120,11 +121,3 @@ async function updateNotionPage(pageId, { price, originalPrice, salePercent,imag
   // Discordクライアントを終了
   discordClient.destroy();
 })(); 
-
-
-const formatReviewText = (review, defaultMessage) => {
-  if (review && review.summary && review.percent >= 0) {
-    return `${review.summary}(${review.percent}%)`;
-  }
-  return defaultMessage;
-};
