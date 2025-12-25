@@ -4,3 +4,7 @@ const formatReviewText = (review, defaultMessage) => {
   }
   return defaultMessage;
 };
+
+module.exports = {
+  formatReviewText
+};
