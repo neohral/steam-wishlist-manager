@@ -2,6 +2,7 @@ import 'dotenv/config';
 import { Client, GatewayIntentBits } from 'discord.js';
 import { Client as NotionClient } from '@notionhq/client';
 import { fetchAppDetails, fetchOverallReview} from './services/steam-fetch.js';
+import { formatReviewText } from './services/steam-formater.js';
 
 // 各種トークン・ID
 const DISCORD_TOKEN = process.env.DISCORD_TOKEN;
